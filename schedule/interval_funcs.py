@@ -1,0 +1,123 @@
+from database.db_actions import db_get_users, db_remove_user
+from checker.check import check_target, check_sponsors
+from datetime import datetime, timedelta
+from keyboards.subs_keyboard import send_keyboard
+from apscheduler.schedulers.asyncio import AsyncIOScheduler
+from loader import bot
+from templates.target import TARGET
+from aiogram.exceptions import TelegramForbiddenError
+from loguru import logger
+from templates.admins import ADMINS
+
+
+@logger.catch()
+async def interval_func(bot):
+    """
+        Check user subscriptions at specified intervals and send warnings.
+
+        Args:
+            bot (Bot): The Telegram Bot instance.
+
+        Returns:
+            None
+    """
+    user_ids = await db_get_users()
+    if user_ids:
+        for user_id in user_ids:
+            user_id = user_id[0]
+            try:
+                print('Checking id: ---------------------', user_id)
+                result = await check_target(user_id)
+                if result:
+                    to_subscribe = await check_sponsors(user_id)
+                    if to_subscribe and user_id not in ADMINS:
+                        await warning_msg(bot, user_id, to_subscribe)
+                    elif to_subscribe:
+                        print(f'user {user_id} is admin and will not be deleted')
+                elif result == False:
+                    print(f'deleting user from db. User {user_id} has left the target channel')
+                    await db_remove_user(user_id)
+                else:
+                    logger.error('check_target function returned None - check internet connection')
+                    continue
+            except:
+                logger.error('unknown error when checking if user is in the target channel')
+                logger.error(f'unknown error when checking if user {user_id} is in the target channel')
+                continue
+    else:
+        logger.info('database is empty')
+
+
+@logger.catch()
+async def warning_msg(bot, user_id, to_subscribe):
+    """
+        Send a warning message to a user with a keyboard to renew subscriptions.
+
+        Args:
+            bot (Bot): The Telegram Bot instance.
+            user_id (int): The user's Telegram ID.
+            to_subscribe (list): A list of channels to subscribe to.
+
+        Returns:
+            None
+    """
+    try:
+        kb = await send_keyboard(to_subscribe)
+        await bot.send_message(user_id, 'Для сохранения доступа в канал, пожалуйста, возобновите подписку на каналы спонсоров: ', reply_markup=kb)
+        scheduler = AsyncIOScheduler()
+
+        #  здесь устанавливается время, через которое юзера удалят, если он не возобновить подписку на каналы спонсоров
+        scheduler.add_job(check_and_kick, trigger='date', run_date=datetime.now() + timedelta(seconds=10), args=[user_id])
+
+        scheduler.start()
+        logger.info('warning message will be sent')
+
+    except TelegramForbiddenError:
+        logger.error('the bot is blocked by user. User will be deleted from database')
+        logger.info('the bot is blocked by user. User will be deleted from database')
+        print(f'the bot is blocked by user {user_id}. User will be deleted from database')
+        await db_remove_user(user_id)
+        await bot.ban_chat_member(chat_id=TARGET[1], user_id=user_id)
+        await bot.unban_chat_member(chat_id=TARGET[1], user_id=user_id)
+
+
+@logger.catch()
+async def check_and_kick(user_id):
+    """
+        Check if a user has resumed subscriptions after a warning message.
+        If not, kick the user from the target channel and remove them from the database.
+
+        Args:
+            user_id (int): The user's Telegram ID.
+
+        Returns:
+            None
+    """
+    result = await check_target(user_id)
+    if result:
+        try:
+            to_subscribe = await check_sponsors(user_id)
+            if to_subscribe:
+                logger.info('kicking user and deleting from db. User has not resume subscriptions after warning')
+                print(f'_______KICKING USER {user_id}________')
+                await bot.ban_chat_member(chat_id=TARGET[1], user_id=user_id)
+                await bot.unban_chat_member(chat_id=TARGET[1], user_id=user_id)
+                await db_remove_user(user_id)
+            else:
+                logger.info('user has resumed subscriptions')
+                print(f'________USER {user_id} WILL STAY________')
+        except TelegramForbiddenError:
+            pass
+    elif result == False:
+        logger.info('user has left target channel after warning. Deleting user for db ')
+        await db_remove_user(user_id)
+    else:
+        logger.error('check_target function returned None - check internet connection')
+        pass
+
+
+
+
+
+
+
