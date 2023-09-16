@@ -37,9 +37,9 @@ async def final_keyboard():
 
     #  здесь устанавливается срок действия пригласительной ссылки - бот ее сам генерирует
     #  срок действия можно менять
-    expire_time = datetime.now() + timedelta(seconds=30)
+    expire_time = datetime.now() + timedelta(days=1)
 
-    invite_link = await bot.create_chat_invite_link(TARGET[1], expire_date=expire_time)
+    invite_link = await bot.create_chat_invite_link(TARGET[1], expire_date=expire_time, creates_join_request=True)
     invite_url = invite_link.invite_link
     button = InlineKeyboardButton(text="ПЕРЕЙТИ В КАНАЛ", url=invite_url)
     kbf = InlineKeyboardMarkup(inline_keyboard=[[button]])

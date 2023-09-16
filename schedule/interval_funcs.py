@@ -63,11 +63,11 @@ async def warning_msg(bot, user_id, to_subscribe):
     """
     try:
         kb = await send_keyboard(to_subscribe)
-        await bot.send_message(user_id, 'Для сохранения доступа в канал, пожалуйста, возобновите подписку на каналы спонсоров: ', reply_markup=kb)
+        await bot.send_message(user_id, 'Мы заметили, что ты отписался от некоторых каналов спонсоров, подписка на них - важноое условие для участия в лектории, возобнови, пожалуйста, подписку на следующие каналы: ', reply_markup=kb)
         scheduler = AsyncIOScheduler()
 
         #  здесь устанавливается время, через которое юзера удалят, если он не возобновить подписку на каналы спонсоров
-        scheduler.add_job(check_and_kick, trigger='date', run_date=datetime.now() + timedelta(seconds=10), args=[user_id])
+        scheduler.add_job(check_and_kick, trigger='date', run_date=datetime.now() + timedelta(seconds=600), args=[user_id])
 
         scheduler.start()
         logger.info('warning message will be sent')
@@ -115,6 +115,46 @@ async def check_and_kick(user_id):
         logger.error('check_target function returned None - check internet connection')
         pass
 
+
+@logger.catch()
+async def remind(message):
+    """
+        Schedule a reminder to send a check message.
+
+        Args:
+            message (types.Message): The incoming message.
+
+        Returns:
+            None
+    """
+    now = datetime.now()
+    desired_time = datetime(now.year, now.month, now.day, 7, 0)
+    if now >= desired_time:
+        desired_time += timedelta(days=1)
+    scheduler = AsyncIOScheduler(timezone="Europe/Moscow")
+    scheduler.add_job(send_remind_check, trigger='date', run_date=desired_time, args=[message])
+    scheduler.start()
+
+
+@logger.catch()
+async def send_remind_check(message):
+    """
+        Send a reminder check message to the user.
+
+        Args:
+            message (types.Message): The incoming message.
+
+        Returns:
+            None
+    """
+    user_id = message.from_user.id
+    result = await check_target(user_id)
+    if not result and user_id not in ADMINS:
+        try:
+            await message.answer("Напоминаем вам, что для получения доступа в закрытый канал нужно подписаться на каналы спонсоров.")
+        except TelegramForbiddenError:
+            logger.error('the bot is blocked by user. Remind message was not sent')
+            print(f'the bot is blocked by user {user_id}. Remind message was not sent')
 
 
 

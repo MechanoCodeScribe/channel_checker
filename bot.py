@@ -1,11 +1,12 @@
 import asyncio
 from loguru import logger
 from loader import bot
-from handlers import start
+from handlers import start, request
 from aiogram import Dispatcher
 from database.db_actions import db_start
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from schedule.interval_funcs import interval_func
+from utils.set_bot_commands import set_default_commands
 
 
 @logger.catch()
@@ -22,14 +23,16 @@ async def main() -> None:
     """
 
     dp = Dispatcher()
+    await set_default_commands()
 
     dp.include_router(start.router)
+    dp.include_router(request.router)
 
     scheduler = AsyncIOScheduler(timezone="Europe/Moscow")
 
     #  устанавливается интервал частоты проверки на подписку пользователей из базы данных на каналы спонсоров
     #  интервал можно менять
-    scheduler.add_job(interval_func, trigger='interval', seconds=30, args=[bot])
+    scheduler.add_job(interval_func, trigger='interval', days=1, args=[bot])
     scheduler.start()
 
     # Initialize logging for information and errors

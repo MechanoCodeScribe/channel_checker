@@ -1,9 +1,12 @@
 from aiogram import Router, types, F
 from aiogram.filters import Command
-from checker.check import subs_checker
+from checker.check import subs_checker, link_request
 from templates.welcome import WELCOME_TEXT
+from templates.invite import INVITE_TEXT
 from filters.chat_types import ChatTypeFilter
 from loguru import logger
+from schedule.interval_funcs import remind
+from filters.warning_flag import Check
 
 
 router = Router()
@@ -28,6 +31,10 @@ async def start_command(message: types.Message):
     await message.answer(WELCOME_TEXT)
     logger.info('new start')
     await subs_checker(message)
+    user_id = message.from_user.id
+    if user_id not in Check.reminder:
+        Check.reminder.add(user_id)
+        await remind(message)
 
 
 @logger.catch()
@@ -44,6 +51,34 @@ async def send_random_value(message: types.Message):
     """
     logger.info('pressed confirmation button')
     await subs_checker(message)
+
+
+@router.message(ChatTypeFilter(chat_type=["private"]), Command('get_link'))
+async def show_link(message: types.Message):
+    """
+        Handle the /get_link command in private chat.
+
+        Args:
+            message (Message): The incoming message.
+
+        Returns:
+            None
+    """
+    await link_request(message)
+
+
+@router.message(ChatTypeFilter(chat_type=["private"]), Command('share'))
+async def share(message: types.Message):
+    """
+        Handle the /share command in private chat.
+
+        Args:
+            message (Message): The incoming message.
+
+        Returns:
+            None
+    """
+    await message.answer(INVITE_TEXT)
 
 
 @logger.catch()

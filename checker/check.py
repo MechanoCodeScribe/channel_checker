@@ -73,19 +73,29 @@ async def subs_checker(message: types.Message):
             await db_add_user(user_id)
             logger.info('add a new user to db. user already in target channel, but was not in db somehow')
     else:
-        to_subscribe = await check_sponsors(user_id)
-        if to_subscribe:
-            kb = await send_keyboard(to_subscribe)
-            kbi = await confirmed_keyboard()
-            await message.answer("Каналы для подписки:", reply_markup=kb)
-            await message.answer("Для подтверждения нажмите 'Я ПОДПИСАЛСЯ'", reply_markup=kbi)
-        else:
-            kbf = await final_keyboard()
-            await message.answer('Спасибо за подписку на спонсоров!', reply_markup=kbf)
-            no_id = await db_check_user(user_id)
-            if no_id:
-                await db_add_user(user_id)
-                logger.info('add a new user to db. user has subscribed to all sponsors')
+        await link_request(message)
+
+
+async def link_request(message):
+    """
+        Handle the link request.
+
+        Args:
+            message (types.Message): The incoming message.
+
+        Returns:
+            None
+    """
+    to_subscribe = await check_sponsors(message.from_user.id)
+    if to_subscribe:
+        kb = await send_keyboard(to_subscribe)
+        kbi = await confirmed_keyboard()
+        await message.answer("Каналы для подписки:", reply_markup=kb)
+        await message.answer("Для подтверждения нажмите 'Я ПОДПИСАЛСЯ'", reply_markup=kbi)
+    else:
+        kbf = await final_keyboard()
+        await message.answer('Спасибо за подписку на спонсоров!', reply_markup=kbf)
+
 
 
 
