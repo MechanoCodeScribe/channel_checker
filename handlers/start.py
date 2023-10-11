@@ -1,8 +1,7 @@
 from aiogram import Router, types, F
 from aiogram.filters import Command
-from checker.check import subs_checker, link_request
-from templates.welcome import WELCOME_TEXT
-from templates.invite import INVITE_TEXT
+from checker.check import subs_checker, link_force
+from templates.welcome import INVITE_TEXT
 from filters.chat_types import ChatTypeFilter
 from loguru import logger
 from schedule.interval_funcs import remind
@@ -26,9 +25,8 @@ async def start_command(message: types.Message):
     """
 
     # это ID приветственного стикера - можно поменять или убрать (всю строку)
-    await message.answer_sticker('CAACAgIAAxkBAAIN0WTuYS7q27mExOdwPZQWa-yl8baZAAJ9DAACyg9ASk_lHJFjepVqMAQ')
+    # await message.answer_sticker('CAACAgIAAxkBAAIN0WTuYS7q27mExOdwPZQWa-yl8baZAAJ9DAACyg9ASk_lHJFjepVqMAQ')
 
-    await message.answer(WELCOME_TEXT)
     logger.info('new start')
     await subs_checker(message)
     user_id = message.from_user.id
@@ -39,7 +37,7 @@ async def start_command(message: types.Message):
 
 @logger.catch()
 @router.message(ChatTypeFilter(chat_type=["private"]), (F.text == 'Я ПОДПИСАЛСЯ'))
-async def send_random_value(message: types.Message):
+async def send_confirm(message: types.Message):
     """
         Handle the "Я ПОДПИСАЛСЯ" text command in private chat.
 
@@ -64,7 +62,7 @@ async def show_link(message: types.Message):
         Returns:
             None
     """
-    await link_request(message)
+    await link_force(message)
 
 
 @router.message(ChatTypeFilter(chat_type=["private"]), Command('share'))
@@ -79,6 +77,22 @@ async def share(message: types.Message):
             None
     """
     await message.answer(INVITE_TEXT)
+
+
+@logger.catch()
+@router.message(ChatTypeFilter(chat_type=["private"]), (F.text == 'ПРОДОЛЖИТЬ'))
+async def send_continue(message: types.Message):
+    """
+        Handle the 'CONTINUE' button press in a private chat.
+
+        Args:
+            message (types.Message): The incoming message.
+
+        Returns:
+            None
+        """
+    logger.info('pressed continue button')
+    await subs_checker(message)
 
 
 @logger.catch()

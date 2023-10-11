@@ -2,7 +2,7 @@ from aiogram import Router, F
 from loguru import logger
 from templates.target import TARGET
 from templates.admins import ADMINS
-from templates.invite import INVITE_TEXT
+from templates.welcome import APPROVED_REQUEST_TEXT
 from loader import bot
 from checker.check import check_sponsors
 from database.db_actions import db_check_user, db_add_user
@@ -36,7 +36,7 @@ async def request_yes(chat_join_request):
             await bot.approve_chat_join_request(TARGET[1], user_id=user_id)
             logger.info('user has passed the approve procedure')
             logger.info(f'user {user_id} has passed the approve procedure')
-            await bot.send_message(user_id, INVITE_TEXT)
+            await bot.send_message(user_id, APPROVED_REQUEST_TEXT)
             no_id = await db_check_user(user_id)
             if no_id:
                 await db_add_user(user_id)

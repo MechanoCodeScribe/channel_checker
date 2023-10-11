@@ -1,7 +1,7 @@
 from database.db_actions import db_get_users, db_remove_user
 from checker.check import check_target, check_sponsors
 from datetime import datetime, timedelta
-from keyboards.subs_keyboard import send_keyboard
+from keyboards.subs_keyboard import subs_choice_remind, subs_choice, continue_keyboard
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from loader import bot
 from templates.target import TARGET
@@ -49,21 +49,20 @@ async def interval_func(bot):
 
 
 @logger.catch()
-async def warning_msg(bot, user_id, to_subscribe):
+async def warning_msg(bot, user_id):
     """
         Send a warning message to a user with a keyboard to renew subscriptions.
 
         Args:
             bot (Bot): The Telegram Bot instance.
             user_id (int): The user's Telegram ID.
-            to_subscribe (list): A list of channels to subscribe to.
 
         Returns:
             None
     """
     try:
-        kb = await send_keyboard(to_subscribe)
-        await bot.send_message(user_id, 'Мы заметили, что ты отписался от некоторых каналов спонсоров, подписка на них - важноое условие для участия в лектории, возобнови, пожалуйста, подписку на следующие каналы: ', reply_markup=kb)
+        key = await subs_choice_remind()
+        await bot.send_message(user_id, 'Чтобы остаться в лектории, нужно возобновить\nподписки на лекторов. Если этого не сделать, то\nчерез 10 минут канал лектория станет недоступен\n\nВыбери способ подписки:', reply_markup=key)
         scheduler = AsyncIOScheduler()
 
         #  здесь устанавливается время, через которое юзера удалят, если он не возобновить подписку на каналы спонсоров
@@ -103,6 +102,12 @@ async def check_and_kick(user_id):
                 await bot.ban_chat_member(chat_id=TARGET[1], user_id=user_id)
                 await bot.unban_chat_member(chat_id=TARGET[1], user_id=user_id)
                 await db_remove_user(user_id)
+                try:
+                    key = await subs_choice()
+                    await bot.send_message(user_id, 'Пришлось ограничить доступ к каналу лектория из-за того, что ты не подписан на всех лекторов. Если хочешь вернуться, выбери способ подписки:', reply_markup=key)
+                except TelegramForbiddenError:
+                    logger.error('the bot is blocked by user. User will be deleted from database')
+                    logger.info('the bot is blocked by user. User will be deleted from database')
             else:
                 logger.info('user has resumed subscriptions')
                 print(f'________USER {user_id} WILL STAY________')
@@ -128,7 +133,7 @@ async def remind(message):
             None
     """
     now = datetime.now()
-    desired_time = datetime(now.year, now.month, now.day, 7, 0)
+    desired_time = datetime(now.year, now.month, now.day, 19)
     if now >= desired_time:
         desired_time += timedelta(days=1)
     scheduler = AsyncIOScheduler(timezone="Europe/Moscow")
@@ -151,7 +156,8 @@ async def send_remind_check(message):
     result = await check_target(user_id)
     if not result and user_id not in ADMINS:
         try:
-            await message.answer("Напоминаем вам, что для получения доступа в закрытый канал нужно подписаться на каналы спонсоров.")
+            key = await continue_keyboard()
+            await message.answer("Заметил, что ты так и не попал в канал лектория.\nХочешь продолжить?", reply_markup=key)
         except TelegramForbiddenError:
             logger.error('the bot is blocked by user. Remind message was not sent')
             print(f'the bot is blocked by user {user_id}. Remind message was not sent')
