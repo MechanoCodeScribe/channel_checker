@@ -35,7 +35,7 @@ async def main() -> None:
 
     #  устанавливается интервал частоты проверки на подписку пользователей из базы данных на каналы спонсоров
     #  интервал можно менять
-    scheduler.add_job(interval_func, trigger='interval', hours=1, args=[bot])
+    scheduler.add_job(interval_func, trigger='interval', minutes=2, args=[bot])
     scheduler.start()
 
     # Initialize logging for information and errors

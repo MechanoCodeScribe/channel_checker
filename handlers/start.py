@@ -51,7 +51,7 @@ async def send_confirm(message: types.Message):
     await subs_checker(message)
 
 
-@router.message(ChatTypeFilter(chat_type=["private"]), Command('get_link'))
+@router.message(ChatTypeFilter(chat_type=["private"]), Command('link'))
 async def show_link(message: types.Message):
     """
         Handle the /get_link command in private chat.
@@ -110,3 +110,4 @@ async def unknown(message: types.Message):
         None
     """
     await message.answer(text="Я не знаю такой команды")
+

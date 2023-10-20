@@ -31,7 +31,7 @@ async def interval_func(bot):
                 if result:
                     to_subscribe = await check_sponsors(user_id)
                     if to_subscribe and user_id not in ADMINS:
-                        await warning_msg(bot, user_id, to_subscribe)
+                        await warning_msg(bot, user_id)
                     elif to_subscribe:
                         print(f'user {user_id} is admin and will not be deleted')
                 elif result == False:
@@ -66,7 +66,7 @@ async def warning_msg(bot, user_id):
         scheduler = AsyncIOScheduler()
 
         #  здесь устанавливается время, через которое юзера удалят, если он не возобновить подписку на каналы спонсоров
-        scheduler.add_job(check_and_kick, trigger='date', run_date=datetime.now() + timedelta(seconds=600), args=[user_id])
+        scheduler.add_job(check_and_kick, trigger='date', run_date=datetime.now() + timedelta(seconds=20), args=[user_id])
 
         scheduler.start()
         logger.info('warning message will be sent')
